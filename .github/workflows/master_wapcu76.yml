@@ -1,0 +1,63 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - wapcu76
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read #This is required for actions/checkout
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to container registry
+        uses: docker/login-action@v2
+        with:
+          registry: appexpressacr.azurecr.io/
+          username: ${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_4996182DA6D14F81A55EED9FE101B929 }}
+          password: ${{ secrets.AZUREAPPSERVICE_CONTAINERPASSWORD_08808D7FD1F740F986A194E85FDE78F5 }}
+
+      - name: Build and push container image to registry
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: appexpressacr.azurecr.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_4996182DA6D14F81A55EED9FE101B929 }}/hello-world:${{ github.sha }}
+          file: ./Dockerfile
+
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+
+    needs: build
+    
+    steps:
+      
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_5DCF8DFDC97B4C6C93906DFD71D30EC4 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_B7CD01A35D2A47F8A8677BCFDBD499B3 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_D33665CD7E8B41CD98A58F9DD837BF7A }}
+
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'wapcu76'
+          slot-name: 'Production'
+          images: 'appexpressacr.azurecr.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_4996182DA6D14F81A55EED9FE101B929 }}/hello-world:${{ github.sha }}'
+          
